@@ -1,0 +1,75 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+import errno
+import os
+import re
+import sys
+import syslog
+
+class Error(Exception):
+  pass
+
+class ParseError(Error):
+  pass
+
+class UnknownTypeError(Error):
+  pass
+
+SHOW, MOVIE = range(2)
+
+SHOW_RULES = [
+  '([\w\.]+)\.S([0-9]+)E([0-9]+)([\w\.]+)',
+  '([\w\.]+)\.([0-9]+)x([0-9]+)([\w\.]+)',
+]
+
+def classify(filename, path):
+  if re.search('S[0-9]+E[0-9]+', filename) != None:
+    filetype = SHOW
+  elif re.search('\.[0-9]+x[0-9]+\.', filename) != None:
+    filetype = SHOW
+  elif (re.search('(720|1080)p', filename) != None and
+      re.search('S[0-9]+', filename) == None):
+    filetype = MOVIE
+  else:
+    raise UnknownTypeError('File could not be classed: ' + filename)
+
+  if filetype == MOVIE:
+    target = '/srv/files/sorted/movies/' + filename + '/'
+  elif filetype == SHOW:
+    for rule in SHOW_RULES:
+      match = re.match(rule, filename)
+      if match != None:
+        break
+
+    if match == None:
+      raise ParseError('Could not parse file as show: ' + filename)
+
+    name = match.group(1).replace('_', '.')
+    season = int(match.group(2))
+    target = '/srv/files/sorted/shows/%s/S%s/%s/' % (
+        name, season, filename)
+
+  try:
+    os.makedirs(target)
+  except OSError as e:
+    if e.errno != errno.EEXIST:
+      raise
+  if os.fork() == 0:
+    os.execl ('/srv/files/.rtorrent/unrar', 'unrar', path, target)
+  os.wait()
+
+if __name__ == '__main__':
+  path = sys.argv[1]
+  filename = os.path.basename(path)
+
+  # Maybe this is a pack
+  pack = False
+  for child in os.listdir(path + '/' ):
+    if os.path.isdir(path + '/' + child):
+      try:
+        classify(child, path + '/' + child)
+        pack = True
+      except UnknownTypeError:
+        pass
+  if not pack:
+    classify(filename, path)

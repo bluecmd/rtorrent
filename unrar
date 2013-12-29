@@ -1,0 +1,7 @@
+#!/bin/bash
+
+set -e 
+
+echo "=> Extracting $1 to $2" | logger
+cd $2
+unrar x -o- $1 &> /dev/null

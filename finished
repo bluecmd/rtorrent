@@ -1,0 +1,3 @@
+#!/bin/bash
+
+screen -dmS mover /srv/files/.rtorrent/mover $1

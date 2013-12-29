@@ -1,0 +1,18 @@
+check_hash = no
+session = /srv/files/.rtorrent/session
+
+dht = auto
+directory = /srv/files/unsorted
+upload_rate = 4000
+download_rate = 4500
+port_range = 22000-23000
+port_random = yes
+encryption = allow_incoming, try_outgoing
+set_max_file_size="1099511627776"
+
+system.method.set_key = event.download.finished,finished,"execute={/srv/files/.rtorrent/finished,$d.get_base_path=}"
+
+# Watch Spool
+schedule = watch_spool,10,10,"load_start=/srv/files/spool/*.torrent,d.set_directory=/srv/files/unsorted/"
+
+scgi_local = /tmp/rtorrent-socket
